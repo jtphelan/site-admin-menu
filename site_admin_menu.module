@@ -1,0 +1,84 @@
+<?php
+
+/**
+ * @file
+ * contains the implementation of hooks invoked by Drupal core.
+ */
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Menu\MenuTreeParameters;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Link;
+use Drupal\Core\Url;
+
+
+/**
+ *  Implements hook_toolbar_alter().
+ */
+function site_admin_menu_toolbar_alter(&$items) {
+  $items['administration']['tray']['toolbar_administration']['#pre_render'] = array('site_admin_menu_prerender_toolbar_administration_tray');
+}
+
+/**
+ * Renders the toolbar's administration tray.
+ * This is a clone of core's toolbar_prerender_toolbar_administration_tray()
+ * function, which uses setMaxDepth(4) instead of setTopLevelOnly()
+ * @param array $element
+ *   A renderable array.
+ *
+ * @return array
+ *   The updated renderable array.
+ *
+ * @see toolbar_prerender_toolbar_administration_tray()
+ */
+function site_admin_menu_prerender_toolbar_administration_tray(array $element) {
+  // machine name of the menu to use for site admins
+  $site_admin_menu = 'owner';
+  // permission to check against to determine whether to load the system admin menu of the custom site admin menu
+  $permission = 'administer content types';
+  
+  $menu_tree = \Drupal::service('toolbar.menu_tree');
+  $parameters = new MenuTreeParameters();
+  if(\Drupal::currentUser()->hasPermission($permission)) {
+    $parameters->setRoot('system.admin')->excludeRoot()->setMaxDepth(4)->onlyEnabledLinks();
+    $tree = $menu_tree->load(NULL, $parameters);
+  } else {
+    $parameters->setMinDepth(1)->setMaxDepth(4)->onlyEnabledLinks();
+    $tree = $menu_tree->load($site_admin_menu, $parameters);
+  }
+  $manipulators = array(
+    array('callable' => 'menu.default_tree_manipulators:checkAccess'),
+    array('callable' => 'menu.default_tree_manipulators:generateIndexAndSort'),
+    array('callable' => 'site_admin_menu_menu_navigation_links'),
+  );
+  $tree = $menu_tree->transform($tree, $manipulators);
+  $element['administration_menu'] = $menu_tree->build($tree);
+
+  return $element;
+}
+
+/**
+ * Adds toolbar-specific attributes to the menu link tree.
+ *
+ * @param \Drupal\Core\Menu\MenuLinkTreeElement[] $tree
+ *   The menu link tree to manipulate.
+ *
+ * @return \Drupal\Core\Menu\MenuLinkTreeElement[]
+ *   The manipulated menu link tree.
+ */
+function site_admin_menu_menu_navigation_links(array $tree) {
+  foreach ($tree as $element) {
+    if ($element->subtree) {
+      site_admin_menu_menu_navigation_links($element->subtree);
+    }
+    $link = $element->link;
+
+    // Get the non-localized title to make the icon class.
+    $definition = $link->getPluginDefinition();
+
+    $element->options['attributes']['class'][] = 'toolbar-icon';
+    $element->options['attributes']['class'][] = 'toolbar-icon-' . strtolower(str_replace(array('.', ' ', '_'), array('-', '-', '-'), $definition['id']));
+    $element->options['attributes']['class'][] = 'toolbar-admin-icon-' . strtolower(str_replace(array('.', ' ', '_'), array('-', '-', '-'), $link->getTitle()));
+    $element->options['attributes']['title'] = $link->getDescription();
+  }
+  return $tree;
+}

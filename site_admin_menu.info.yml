@@ -1,0 +1,5 @@
+name: Site Admin Menu
+description: Custom hook and alter functions
+core: 8.x
+type: module
+package: 'Custom'
