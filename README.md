@@ -7,6 +7,7 @@ Set the machine name of the menu to use and the permission to check against to d
 	<?php 
 	// machine name of the menu to use for site admins
 	$site_admin_menu = 'owner';
-	// permission to check against to determine whether to load the system admin menu of the custom site admin menu
+	// permission to check against to determine whether to load the system admin menu or 
+	// the custom site admin menu
 	$permission = 'administer content types';
 	?>
